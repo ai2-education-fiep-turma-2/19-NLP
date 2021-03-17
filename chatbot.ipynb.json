@@ -1,0 +1,769 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## libs"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "Downloading https://raw.githubusercontent.com/stanfordnlp/stanza-resources/master/resources_1.2.0.json: 128kB [00:00, 25.3MB/s]                    \n",
+      "2021-03-17 07:53:58 INFO: Downloading default packages for language: pt (Portuguese)...\n",
+      "2021-03-17 07:53:58 INFO: File exists: /home/silvio/stanza_resources/pt/default.zip.\n",
+      "2021-03-17 07:54:01 INFO: Finished downloading models and saved to /home/silvio/stanza_resources.\n",
+      "2021-03-17 07:54:02 INFO: Loading these models for language: pt (Portuguese):\n",
+      "=======================\n",
+      "| Processor | Package |\n",
+      "-----------------------\n",
+      "| tokenize  | bosque  |\n",
+      "| mwt       | bosque  |\n",
+      "| pos       | bosque  |\n",
+      "| lemma     | bosque  |\n",
+      "| depparse  | bosque  |\n",
+      "=======================\n",
+      "\n",
+      "2021-03-17 07:54:02 INFO: Use device: gpu\n",
+      "2021-03-17 07:54:02 INFO: Loading: tokenize\n",
+      "2021-03-17 07:54:05 INFO: Loading: mwt\n",
+      "2021-03-17 07:54:05 INFO: Loading: pos\n",
+      "2021-03-17 07:54:05 INFO: Loading: lemma\n",
+      "2021-03-17 07:54:05 INFO: Loading: depparse\n",
+      "2021-03-17 07:54:06 INFO: Done loading processors!\n"
+     ]
+    }
+   ],
+   "source": [
+    "import io\n",
+    "import random\n",
+    "import string \n",
+    "import warnings\n",
+    "import numpy as np\n",
+    "from sklearn.feature_extraction.text import TfidfVectorizer\n",
+    "from sklearn.metrics.pairwise import cosine_similarity\n",
+    "import warnings\n",
+    "warnings.filterwarnings('ignore')\n",
+    "\n",
+    "import nltk\n",
+    "from nltk.stem import WordNetLemmatizer\n",
+    "nltk.download('popular', quiet=True)\n",
+    "\n",
+    "import stanza\n",
+    "\n",
+    "stanza.download('pt')\n",
+    "nlp = stanza.Pipeline('pt')"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Corpus\n",
+    "\n",
+    "Sentenças que o chatbot vai usar como base de conhecimento"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "f=open('/home/silvio/soci.txt','r',errors = 'ignore')\n",
+    "raw=f.read()\n",
+    "raw = raw.lower()#lowercase"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# carregando stop words em portugues"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "sw_pt=nltk.corpus.stopwords.words('portuguese') "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "['de',\n",
+       " 'a',\n",
+       " 'o',\n",
+       " 'que',\n",
+       " 'e',\n",
+       " 'é',\n",
+       " 'do',\n",
+       " 'da',\n",
+       " 'em',\n",
+       " 'um',\n",
+       " 'para',\n",
+       " 'com',\n",
+       " 'não',\n",
+       " 'uma',\n",
+       " 'os',\n",
+       " 'no',\n",
+       " 'se',\n",
+       " 'na',\n",
+       " 'por',\n",
+       " 'mais',\n",
+       " 'as',\n",
+       " 'dos',\n",
+       " 'como',\n",
+       " 'mas',\n",
+       " 'ao',\n",
+       " 'ele',\n",
+       " 'das',\n",
+       " 'à',\n",
+       " 'seu',\n",
+       " 'sua',\n",
+       " 'ou',\n",
+       " 'quando',\n",
+       " 'muito',\n",
+       " 'nos',\n",
+       " 'já',\n",
+       " 'eu',\n",
+       " 'também',\n",
+       " 'só',\n",
+       " 'pelo',\n",
+       " 'pela',\n",
+       " 'até',\n",
+       " 'isso',\n",
+       " 'ela',\n",
+       " 'entre',\n",
+       " 'depois',\n",
+       " 'sem',\n",
+       " 'mesmo',\n",
+       " 'aos',\n",
+       " 'seus',\n",
+       " 'quem',\n",
+       " 'nas',\n",
+       " 'me',\n",
+       " 'esse',\n",
+       " 'eles',\n",
+       " 'você',\n",
+       " 'essa',\n",
+       " 'num',\n",
+       " 'nem',\n",
+       " 'suas',\n",
+       " 'meu',\n",
+       " 'às',\n",
+       " 'minha',\n",
+       " 'numa',\n",
+       " 'pelos',\n",
+       " 'elas',\n",
+       " 'qual',\n",
+       " 'nós',\n",
+       " 'lhe',\n",
+       " 'deles',\n",
+       " 'essas',\n",
+       " 'esses',\n",
+       " 'pelas',\n",
+       " 'este',\n",
+       " 'dele',\n",
+       " 'tu',\n",
+       " 'te',\n",
+       " 'vocês',\n",
+       " 'vos',\n",
+       " 'lhes',\n",
+       " 'meus',\n",
+       " 'minhas',\n",
+       " 'teu',\n",
+       " 'tua',\n",
+       " 'teus',\n",
+       " 'tuas',\n",
+       " 'nosso',\n",
+       " 'nossa',\n",
+       " 'nossos',\n",
+       " 'nossas',\n",
+       " 'dela',\n",
+       " 'delas',\n",
+       " 'esta',\n",
+       " 'estes',\n",
+       " 'estas',\n",
+       " 'aquele',\n",
+       " 'aquela',\n",
+       " 'aqueles',\n",
+       " 'aquelas',\n",
+       " 'isto',\n",
+       " 'aquilo',\n",
+       " 'estou',\n",
+       " 'está',\n",
+       " 'estamos',\n",
+       " 'estão',\n",
+       " 'estive',\n",
+       " 'esteve',\n",
+       " 'estivemos',\n",
+       " 'estiveram',\n",
+       " 'estava',\n",
+       " 'estávamos',\n",
+       " 'estavam',\n",
+       " 'estivera',\n",
+       " 'estivéramos',\n",
+       " 'esteja',\n",
+       " 'estejamos',\n",
+       " 'estejam',\n",
+       " 'estivesse',\n",
+       " 'estivéssemos',\n",
+       " 'estivessem',\n",
+       " 'estiver',\n",
+       " 'estivermos',\n",
+       " 'estiverem',\n",
+       " 'hei',\n",
+       " 'há',\n",
+       " 'havemos',\n",
+       " 'hão',\n",
+       " 'houve',\n",
+       " 'houvemos',\n",
+       " 'houveram',\n",
+       " 'houvera',\n",
+       " 'houvéramos',\n",
+       " 'haja',\n",
+       " 'hajamos',\n",
+       " 'hajam',\n",
+       " 'houvesse',\n",
+       " 'houvéssemos',\n",
+       " 'houvessem',\n",
+       " 'houver',\n",
+       " 'houvermos',\n",
+       " 'houverem',\n",
+       " 'houverei',\n",
+       " 'houverá',\n",
+       " 'houveremos',\n",
+       " 'houverão',\n",
+       " 'houveria',\n",
+       " 'houveríamos',\n",
+       " 'houveriam',\n",
+       " 'sou',\n",
+       " 'somos',\n",
+       " 'são',\n",
+       " 'era',\n",
+       " 'éramos',\n",
+       " 'eram',\n",
+       " 'fui',\n",
+       " 'foi',\n",
+       " 'fomos',\n",
+       " 'foram',\n",
+       " 'fora',\n",
+       " 'fôramos',\n",
+       " 'seja',\n",
+       " 'sejamos',\n",
+       " 'sejam',\n",
+       " 'fosse',\n",
+       " 'fôssemos',\n",
+       " 'fossem',\n",
+       " 'for',\n",
+       " 'formos',\n",
+       " 'forem',\n",
+       " 'serei',\n",
+       " 'será',\n",
+       " 'seremos',\n",
+       " 'serão',\n",
+       " 'seria',\n",
+       " 'seríamos',\n",
+       " 'seriam',\n",
+       " 'tenho',\n",
+       " 'tem',\n",
+       " 'temos',\n",
+       " 'tém',\n",
+       " 'tinha',\n",
+       " 'tínhamos',\n",
+       " 'tinham',\n",
+       " 'tive',\n",
+       " 'teve',\n",
+       " 'tivemos',\n",
+       " 'tiveram',\n",
+       " 'tivera',\n",
+       " 'tivéramos',\n",
+       " 'tenha',\n",
+       " 'tenhamos',\n",
+       " 'tenham',\n",
+       " 'tivesse',\n",
+       " 'tivéssemos',\n",
+       " 'tivessem',\n",
+       " 'tiver',\n",
+       " 'tivermos',\n",
+       " 'tiverem',\n",
+       " 'terei',\n",
+       " 'terá',\n",
+       " 'teremos',\n",
+       " 'terão',\n",
+       " 'teria',\n",
+       " 'teríamos',\n",
+       " 'teriam']"
+      ]
+     },
+     "execution_count": 4,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "sw_pt"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "Pré-processamento básico para atacar desafios NLP:\n",
+    "\n",
+    "* Converter todo o texto em maiúsculas ou minúsculas\n",
+    "\n",
+    "* Tokenização\n",
+    "\n",
+    "O tokenizador NLTK permite\n",
+    "* remover ruidos: tudo que nao e letra ou número da linguagem\n",
+    "* remover stop words\n",
+    "* Stemming: Stemming é o processo de redução de palavras flexionadas (ou às vezes derivadas) à sua raiz, forma de base ou raiz - geralmente uma forma de palavra escrita.\n",
+    "\n",
+    "* Lematização: variante do Stemming. A principal diferença entre eles é que, frequentemente, o radical pode criar palavras inexistentes, ao passo que os lemas são palavras reais.  Exemplos de lematização são que “correr” é uma forma base para palavras como “correr” ou “correu” "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Tokenização"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 26,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "sent_tokens = nltk.sent_tokenize(raw)# transformando em lista de sentencas"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'por sua forma\\nteórica, porém, o socialismo começa apresentando-se como uma continuação, mais desenvolvida e mais\\nconseqüente, dos princípios proclamados pelos grandes pensadores franceses do século xviii.'"
+      ]
+     },
+     "execution_count": 6,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "sent_tokens[1]"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'os grandes pensadores do século xviii, como\\ntodos os seus predecessores, não podiam romper as fronteiras que sua própria época lhes impunha.'"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "sent_tokens[10]"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# retirando raiz da palavras - stem"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'obtid'"
+      ]
+     },
+     "execution_count": 8,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "from nltk.stem.snowball import SnowballStemmer\n",
+    "\n",
+    "Stemmer=SnowballStemmer(\"portuguese\")\n",
+    "Stemmer.stem(\"obtido\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "'os grandes pensadores do século xviii, como\\ntodos os seus predecessores, não podiam romper as fronteiras que sua própria época lhes impunha.'"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "Stemmer.stem(sent_tokens[10])"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# lemmatização"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "os grandes pensadores do século xviii, como\n",
+      "todos os seus predecessores, não podiam romper as fronteiras que sua própria época lhes impunha.\n",
+      "o\tgrande\tpensador\tde\to\tséculo\txviii\t,\tcomo\ttodo\to\tseu\tpredecessor\t,\tnão\tpoder\tromper\to\tfronteira\tque\tseu\tpróprio\tépoca\teles\timpor\t.\t\n"
+     ]
+    }
+   ],
+   "source": [
+    "txt=\"Não, minha miúda no sentido que és como uma irmã para mim.\"\n",
+    "txt=\"todos todas todo partido partida partidao partideiro partidos\"\n",
+    "txt=sent_tokens[10]\n",
+    "lemma = \"\"\n",
+    "for sent in nlp(txt).sentences:\n",
+    "    for word in sent.words:\n",
+    "        lemma += word.lemma + \"\\t\"\n",
+    "\n",
+    "print(txt)\n",
+    "print(lemma)"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# preparando sentença "
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "from nltk.stem.snowball import SnowballStemmer\n",
+    "\n",
+    "Stemmer=SnowballStemmer(\"portuguese\")\n",
+    "remove_punct_dict = dict((ord(punct), None) for punct in string.punctuation)\n",
+    "\n",
+    "def LemTokens(tokens):\n",
+    "    return [Stemmer.stem(token) for token in tokens]\n",
+    "\n",
+    "def LemNormalize(text):\n",
+    "    return LemTokens(nltk.word_tokenize(text.lower().translate(remove_punct_dict)))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      " original:  por sua forma\n",
+      "teórica, porém, o socialismo começa apresentando-se como uma continuação, mais desenvolvida e mais\n",
+      "conseqüente, dos princípios proclamados pelos grandes pensadores franceses do século xviii.\n",
+      "\n",
+      " transformado:  ['por', 'sua', 'form', 'teóric', 'porém', 'o', 'social', 'comec', 'apresentandos', 'com', 'uma', 'continu', 'mais', 'desenvolv', 'e', 'mais', 'consequent', 'dos', 'princípi', 'proclam', 'pel', 'grand', 'pensador', 'frances', 'do', 'sécul', 'xvii']\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(\" original: \" , sent_tokens[1])\n",
+    "print(\"\")\n",
+    "print(\" transformado: \" , LemNormalize(sent_tokens[1]))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "## Gerando Respostas\n",
+    "\n",
+    "### Bag of Words\n",
+    "* Reduzir a senteças a conteúdos que sejam significativos para a tokenização (sensível a frequÊncia da palavra)\n",
+    "\n",
+    "### TF-IDF ( Term Frequency-Inverse Document Frequency) \n",
+    "* Penaliza termos que aprecem com muita frequência\n",
+    "\n",
+    "### similaridade por cosseno\n",
+    "* Mede similaridade entre dois textos, com base no seus vetores"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "To generate a response from our bot for input questions, the concept of document similarity will be used. We define a function response which searches the user’s utterance for one or more known keywords and returns one of several possible responses. If it doesn’t find the input matching any of the keywords, it returns a response:” I am sorry! I don’t understand you”"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 36,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "def response(user_response):\n",
+    "    robo_response=''\n",
+    "    #adiciona a pergunta do usuário a lista de sentenças\n",
+    "    sent_tokens.append(user_response)\n",
+    "    \n",
+    "    # normaliza a expressão de entrada\n",
+    "    TfidfVec = TfidfVectorizer(tokenizer=LemNormalize, stop_words=sw_pt)\n",
+    "    \n",
+    "    # aplica função tfidf a todas as sentenças\n",
+    "    tfidf = TfidfVec.fit_transform(sent_tokens)\n",
+    "    #print(tfidf)\n",
+    "    #obtem similaridade entre a sentença que foi incluida tfidf[-1] e todas as outras sentenças\n",
+    "    vals = cosine_similarity(tfidf[-1], tfidf)\n",
+    "    \n",
+    "    print(vals.shape)\n",
+    "    print('vals: ',vals)\n",
+    "    print('vals sort: ',vals.argsort())\n",
+    "    idx=vals.argsort()[0][-2]\n",
+    "    print('idx: ',idx)\n",
+    "    \n",
+    "    # Verificar se melhor similaridade encontrada é 0\n",
+    "    # se for responde como não entendi\n",
+    "    flat = vals.flatten()\n",
+    "    flat.sort()\n",
+    "    print('flat ', flat)\n",
+    "    req_tfidf = flat[-2]\n",
+    "    print('req_tfidf ', req_tfidf)\n",
+    "    \n",
+    "    if(req_tfidf==0):\n",
+    "        robo_response=robo_response+\"não entendi\"\n",
+    "        return robo_response\n",
+    "    else:\n",
+    "        robo_response = robo_response+sent_tokens[idx]\n",
+    "    return robo_response"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 39,
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(1, 539)\n",
+      "vals:  [[0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      "  0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1.]]\n",
+      "vals sort:  [[  0 367 366 365 364 363 362 361 360 359 358 357 356 355 354 353 352 351\n",
+      "  350 349 348 347 346 345 344 343 342 341 340 339 368 369 370 371 401 400\n",
+      "  399 398 397 396 395 394 393 392 391 390 389 388 338 387 385 384 383 382\n",
+      "  381 380 379 378 377 376 375 374 373 372 386 337 336 335 300 299 298 297\n",
+      "  296 295 294 293 292 291 290 289 288 287 301 286 284 283 282 281 280 279\n",
+      "  278 277 276 275 274 273 272 271 285 402 302 304 334 333 332 331 330 329\n",
+      "  328 327 326 325 324 323 322 321 303 320 318 317 316 315 314 313 312 311\n",
+      "  310 309 308 307 306 305 319 270 403 405 502 501 500 499 498 497 496 495\n",
+      "  494 493 492 491 490 489 488 487 486 485 484 483 482 481 480 479 478 477\n",
+      "  476 475 474 503 504 505 506 536 535 534 533 532 531 530 529 528 527 526\n",
+      "  525 524 523 473 522 520 519 518 517 516 515 514 513 512 511 510 509 508\n",
+      "  507 521 472 471 470 435 434 433 432 431 430 429 428 427 426 425 424 423\n",
+      "  422 436 421 419 418 417 416 415 414 413 412 411 410 409 408 407 406 420\n",
+      "  404 437 439 469 468 467 466 465 464 463 462 461 460 459 458 457 456 438\n",
+      "  455 453 452 451 450 449 448 447 446 445 444 443 442 441 440 454 537 269\n",
+      "  267  97  96  95  94  93  92  91  90  89  88  87  86  85  84  83  82  81\n",
+      "   80  79  78  77  76  75  74  73  72  71  70  69  98  99 100 101 131 130\n",
+      "  129 128 127 126 125 124 123 122 121 120 119 118  68 117 115 114 113 112\n",
+      "  111 110 109 108 107 106 105 104 103 102 116  67  66  65  30  29  28  27\n",
+      "   26  25  24  23  22  21  20  19  18  17  31  16  14  13  12  11  10   9\n",
+      "    8   7   6   5   4   3   2   1  15 132  32  34  64  63  62  61  60  59\n",
+      "   58  57  56  55  54  53  52  51  33  50  48  47  46  45  44  43  42  41\n",
+      "   40  39  38  37  36  35  49 268 133 135 232 231 230 229 228 227 226 225\n",
+      "  224 223 222 221 220 219 218 217 216 215 214 213 212 211 210 209 208 207\n",
+      "  206 205 204 233 234 235 236 266 265 264 263 262 261 260 259 258 257 256\n",
+      "  255 254 253 203 252 250 249 248 247 246 245 244 243 242 241 240 239 238\n",
+      "  237 251 202 201 200 165 164 163 162 161 160 159 158 157 156 155 154 153\n",
+      "  152 166 151 149 148 147 146 145 144 143 142 141 140 139 138 137 136 150\n",
+      "  134 167 169 199 198 197 196 195 194 193 192 191 190 189 188 187 186 168\n",
+      "  185 183 182 181 180 179 178 177 176 175 174 173 172 171 170 184 538]]\n",
+      "idx:  184\n",
+      "flat  [0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 0.\n",
+      " 0. 0. 0. 0. 0. 0. 0. 0. 0. 0. 1.]\n",
+      "req_tfidf  0.0\n",
+      "não entendi\n"
+     ]
+    }
+   ],
+   "source": [
+    "Q = \"O que é agumon?\"\n",
+    "Ql=Q.lower()\n",
+    "A=response(Ql)\n",
+    "print(A)\n",
+    "sent_tokens.remove(Ql)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# Rotina para obter entrada e calcular saída mais similar"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "flag=True\n",
+    "print(\"chatbot\")\n",
+    "\n",
+    "while(flag==True):\n",
+    "    # obtem frase dita pelo usuário\n",
+    "    user_response = input()\n",
+    "    user_response=user_response.lower()\n",
+    "    # se não foi sair\n",
+    "    if(user_response!='sair'):\n",
+    "        print(\"ROBO: \",end=\"\")\n",
+    "        print(response(user_response))\n",
+    "        sent_tokens.remove(user_response)\n",
+    "    else:\n",
+    "        flag=False\n",
+    "        print(\"ROBO: saindo\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.8.8"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}
